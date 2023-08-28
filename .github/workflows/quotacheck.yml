@@ -1,0 +1,56 @@
+name: Test org quotas
+run-name: Trying to save something into github storage
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+jobs:
+  check_quota:
+    env:
+      GITHUB_TOKEN: ${{ secrets.API_TOKEN}}
+      ROUTING_KEY: ${{ secrets.DISK_FULL_ROUTING_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API
+        id: apicheck
+        continue-on-error: true
+        run: |
+          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq '.estimated_storage_for_month' | grep -v 0
+
+      - name: Generate objects
+        id: gen_objs
+        continue-on-error: true
+        if: failure() && steps.apicheck.outcome == 'failure'
+        run: |
+          dd if=/dev/zero of=/tmp/test bs=1M count=10 && echo date +%s > /tmp/date
+
+      - name: try saving artifact
+        id: trysave
+        uses: actions/upload-artifact@v3
+        if: ( failure() || success() ) && steps.apicheck.outcome == 'failure' && steps.gen_objs.outcome == 'success'
+        with:
+          name: testartifact
+          path: /tmp/test
+          retention-days: 1
+
+      - name: update timestamp
+        id: date
+        uses: actions/upload-artifact@v3
+        with:
+          name: last_run
+          path: /tmp/date
+        
+
+      - name: Report an error
+        continue-on-error: true
+        if: failure() && steps.trysave.outcome == 'failure'
+        run: |
+          echo -- curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
+              "payload": {
+                  "summary": "Github ${{ github.repository_owner }} out of storage",
+                  "severity": "critical",
+                  "source": "github workflow check"
+              },
+              "routing_key": "${{ env.ROUTING_KEY}}",
+              "event_action": "trigger",
+              "dedup_key": "test_attempt_1"
+            }'
