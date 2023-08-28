@@ -14,7 +14,7 @@ jobs:
         id: apicheck
         continue-on-error: true
         run: |
-          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq 'if .estimated_storage_for_month == null then 0 else estimated_storage_for_month end' | grep -v 0
+          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq 'if .estimated_storage_for_month == null then 0 else .estimated_storage_for_month end' | grep -v 0
 
       - name: Generate objects
         id: gen_objs
