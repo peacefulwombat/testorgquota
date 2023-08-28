@@ -14,12 +14,12 @@ jobs:
         id: apicheck
         continue-on-error: true
         run: |
-          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq '.estimated_storage_for_month' | grep -v 0
+          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq 'if .estimated_storage_for_month == null then 0 else estimated_storage_for_month end' | grep -v 0
 
       - name: Generate objects
         id: gen_objs
         continue-on-error: true
-        if: failure() && steps.apicheck.outcome == 'failure'
+        if: always()
         run: |
           dd if=/dev/zero of=/tmp/test bs=1M count=10 && echo date +%s > /tmp/date
 
