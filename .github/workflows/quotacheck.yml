@@ -15,7 +15,7 @@ jobs:
         continue-on-error: true
         run: >
           curl -L -H "Authorization: Bearer $API_TOKEN" https://api.github.com/orgs/${{ github.repository_owner }}/settings/billing/shared-storage | 
-          jq 'if .estimated_storage_for_month == null then 0 else .estimated_storage_for_month end' | 
+          jq '.estimated_storage_for_month - .estimated_paid_storage_for_month' |
           grep -v 0
 
       - name: Generate objects
@@ -35,11 +35,11 @@ jobs:
 
       - name: Report an error
         continue-on-error: true
-        if: success() && steps.trysave.outcome == 'success'
+        if: failure() && steps.trysave.outcome == 'failure'
         run: >
           curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
               "payload": {
-                  "summary": "Github ${{ github.repository_owner }} out of storage",
+                  "summary": "Github org ${{ github.repository_owner }} is out of storage",
                   "severity": "critical",
                   "source": "github workflow check"
               },
