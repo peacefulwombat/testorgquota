@@ -6,22 +6,23 @@ on:
 jobs:
   check_quota:
     env:
-      GITHUB_TOKEN: ${{ secrets.API_TOKEN}}
+      API_TOKEN: ${{ secrets.API_TOKEN}}
       ROUTING_KEY: ${{ secrets.DISK_FULL_ROUTING_KEY }}
     runs-on: ubuntu-latest
     steps:
       - name: Check API
         id: apicheck
         continue-on-error: true
-        run: |
-          curl -L -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/orgs/$ORG/settings/billing/shared-storage | jq 'if .estimated_storage_for_month == null then 0 else .estimated_storage_for_month end' | grep -v 0
+        run: >
+          curl -L -H "Authorization: Bearer $API_TOKEN" https://api.github.com/orgs/${{ github.repository_owner }}/settings/billing/shared-storage | 
+          jq 'if .estimated_storage_for_month == null then 0 else .estimated_storage_for_month end' | 
+          grep -v 0
 
       - name: Generate objects
         id: gen_objs
         continue-on-error: true
         if: always()
-        run: |
-          dd if=/dev/zero of=/tmp/test bs=1M count=10 && echo date +%s > /tmp/date
+        run: dd if=/dev/zero of=/tmp/test bs=1M count=10
 
       - name: try saving artifact
         id: trysave
@@ -32,18 +33,10 @@ jobs:
           path: /tmp/test
           retention-days: 1
 
-      - name: update timestamp
-        id: date
-        uses: actions/upload-artifact@v3
-        with:
-          name: last_run
-          path: /tmp/date
-        
-
       - name: Report an error
         continue-on-error: true
         if: failure() && steps.trysave.outcome == 'failure'
-        run: |
+        run: >
           echo -- curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
               "payload": {
                   "summary": "Github ${{ github.repository_owner }} out of storage",
@@ -54,3 +47,11 @@ jobs:
               "event_action": "trigger",
               "dedup_key": "test_attempt_1"
             }'
+    
+      - name: Cleanup
+        if: always()
+        run: >
+          curl -L -H "Authorization: Bearer $API_TOKEN" https://api.github.com/repos/${{ github.repository }}/actions/artifacts | 
+          jq '.artifacts[].id' | 
+          xargs -n1 -r -I{} 
+            curl -X DELETE -L -H "Authorization: Bearer $API_TOKEN" https://api.github.com/repos/${{ github.repository }}/actions/artifacts/{}
