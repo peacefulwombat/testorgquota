@@ -35,7 +35,7 @@ jobs:
 
       - name: Report an error
         continue-on-error: true
-        if: failure() && steps.trysave.outcome == 'failure'
+        if: success() && steps.trysave.outcome == 'success'
         run: >
           echo -- curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
               "payload": {
@@ -45,7 +45,7 @@ jobs:
               },
               "routing_key": "${{ env.ROUTING_KEY}}",
               "event_action": "trigger",
-              "dedup_key": "test_attempt_1"
+              "dedup_key": "storage_test_${{ github.repository_owner }}"
             }'
     
       - name: Cleanup
