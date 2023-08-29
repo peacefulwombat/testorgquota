@@ -37,7 +37,7 @@ jobs:
         continue-on-error: true
         if: success() && steps.trysave.outcome == 'success'
         run: >
-          echo -- curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
+          curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
               "payload": {
                   "summary": "Github ${{ github.repository_owner }} out of storage",
                   "severity": "critical",
