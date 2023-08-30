@@ -28,6 +28,7 @@ jobs:
 
       - name: try saving artifact
         id: trysave
+        continue-on-error: true
         uses: actions/upload-artifact@v3
         if: ( failure() || success() ) && steps.apicheck.outcome == 'failure' && steps.gen_objs.outcome == 'success'
         with:
@@ -37,7 +38,7 @@ jobs:
 
       - name: Report an error
         continue-on-error: true
-        if: failure() && steps.trysave.outcome == 'failure'
+        if: failure() && steps.trysave.outcome != 'success'
         run: >
           curl --request 'POST' --url 'https://events.eu.pagerduty.com/v2/enqueue' --header 'Content-Type: application/json' --data '{
               "payload": {
