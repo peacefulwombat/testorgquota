@@ -46,7 +46,7 @@ jobs:
                   "severity": "critical",
                   "source": "github workflow check"
               },
-              "routing_key": "${{ env.ROUTING_KEY}}",
+              "routing_key": "${{ env.ROUTING_KEY }}",
               "event_action": "trigger",
               "dedup_key": "storage_test_${{ github.repository_owner }}"
             }'
